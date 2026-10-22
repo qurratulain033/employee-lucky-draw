@@ -192,7 +192,7 @@ with st.sidebar:
                 st.rerun()
 
 # ---------------------------------------------------------------- header
-st.title("🎉 Employee Lucky Draw")
+st.title("Employee Lucky Draw")
 
 if "flash" in st.session_state:
     kind, msg = st.session_state.pop("flash")
