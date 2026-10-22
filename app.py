@@ -18,7 +18,7 @@ from config import PHOTOS_DIR, DEFAULT_ROUNDS, DEFAULT_WINNERS_PER_ROUND
 from generate_data import generate
 from validation import validate_employees
 
-st.set_page_config(page_title="Employee Lucky Draw", page_icon="🎉", layout="wide")
+st.set_page_config(page_title="Employee Lucky Draw", layout="wide")
 db.init_db()
 
 # ---------------------------------------------------------------- styling
