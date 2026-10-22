@@ -6,6 +6,8 @@ import base64
 import html
 import io
 import time
+import re
+import secrets
 from functools import lru_cache
 from pathlib import Path
 
@@ -14,7 +16,7 @@ import streamlit as st
 
 import db
 import draw
-from config import PHOTOS_DIR, DEFAULT_ROUNDS, DEFAULT_WINNERS_PER_ROUND
+from config import PER_VISITOR_DRAWS, PHOTOS_DIR, DEFAULT_ROUNDS, DEFAULT_WINNERS_PER_ROUND
 from generate_data import generate
 from validation import validate_employees
 
@@ -106,14 +108,26 @@ def import_dataframe(raw: pd.DataFrame, source: str, rounds: int, winners_each: 
         for e in errors:
             st.sidebar.write(f"• {e}")
         return
-    db.create_session(clean, total_rounds=rounds, winners_per_round=winners_each)
-    flash("success", f"Imported {len(clean):,} employees from {source}. "
-                     f"Draw: {rounds} round(s) x {winners_each} winner(s). Ready!")
+    db.create_session(clean, total_rounds=rounds, winners_per_round=winners_each, owner=owner)
     st.rerun()
 
 
 # ---------------------------------------------------------------- state
-session = db.get_active_session()
+def get_owner() -> str:
+    """Give each visitor a private key, kept in the page address (?s=...) so a refresh
+    keeps their draw but a brand-new visitor starts with an empty one."""
+    if not PER_VISITOR_DRAWS:
+        return ""                                    # one shared draw (local event mode)
+    token = st.query_params.get("s", "")
+    if not re.fullmatch(r"[0-9a-f]{32}", str(token)):
+        token = secrets.token_hex(16)
+        st.query_params["s"] = token
+    return token
+
+
+owner = get_owner()
+session = db.get_active_session(owner=owner)
+
 done = db.rounds_completed(session["session_id"]) if session else 0
 total_rounds = session["total_rounds"] if session else DEFAULT_ROUNDS
 per_round = session["winners_per_round"] if session else DEFAULT_WINNERS_PER_ROUND

@@ -65,6 +65,8 @@ def init_db(path=None):
         cols = [r["name"] for r in conn.execute("PRAGMA table_info(draw_sessions)")]
         if "total_rounds" not in cols:
             conn.execute("ALTER TABLE draw_sessions ADD COLUMN total_rounds INTEGER NOT NULL DEFAULT 5")
+        if "owner" not in cols:
+            conn.execute("ALTER TABLE draw_sessions ADD COLUMN owner TEXT NOT NULL DEFAULT ''")
         if "winners_per_round" not in cols:
             conn.execute("ALTER TABLE draw_sessions ADD COLUMN winners_per_round INTEGER NOT NULL DEFAULT 2")
         conn.commit()
@@ -72,16 +74,20 @@ def init_db(path=None):
 
 def create_session(df: pd.DataFrame, path=None,
                    total_rounds: int = DEFAULT_ROUNDS,
-                   winners_per_round: int = DEFAULT_WINNERS_PER_ROUND) -> int:
+                   winners_per_round: int = DEFAULT_WINNERS_PER_ROUND,
+                   owner: str = "") -> int:
     """Start a new draw from a validated employee table. Old session is archived."""
     with get_conn(path) as conn:
         try:
             conn.execute("BEGIN")
-            conn.execute("UPDATE draw_sessions SET status='archived' WHERE status='active'")
+            conn.execute("UPDATE draw_sessions SET status='archived' "
+                         "WHERE status='active' AND owner = ?", (owner,))
             cur = conn.execute(
-                "INSERT INTO draw_sessions (created_at, initial_count, total_rounds, winners_per_round) "
-                "VALUES (?, ?, ?, ?)",
-                (datetime.now().isoformat(timespec="seconds"), len(df), total_rounds, winners_per_round))
+                "INSERT INTO draw_sessions (created_at, initial_count, total_rounds, winners_per_round, owner) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (datetime.now().isoformat(timespec="seconds"), len(df), total_rounds,
+                 winners_per_round, owner)) 
+        
             sid = cur.lastrowid
             conn.executemany(
                 "INSERT INTO employees VALUES (?, ?, ?, ?, ?, ?)",
@@ -94,10 +100,10 @@ def create_session(df: pd.DataFrame, path=None,
             raise
 
 
-def get_active_session(path=None):
+def get_active_session(path=None, owner: str = ""):
     with get_conn(path) as conn:
-        row = conn.execute("SELECT * FROM draw_sessions WHERE status='active' "
-                           "ORDER BY session_id DESC LIMIT 1").fetchone()
+        row = conn.execute("SELECT * FROM draw_sessions WHERE status='active' AND owner = ? "
+                           "ORDER BY session_id DESC LIMIT 1", (owner,)).fetchone()
         return dict(row) if row else None
 
 

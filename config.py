@@ -10,3 +10,6 @@ DEFAULT_WINNERS_PER_ROUND = 2    # the operator can change both on screen
 
 REQUIRED_COLUMNS = ["Employee_ID", "Name", "Designation", "Department"]
 OPTIONAL_COLUMNS = ["Photo"]
+# True  = every visitor gets their own private draw (use this for the shared web link)
+# False = one shared draw for everyone (use this for the live event on ONE laptop)
+PER_VISITOR_DRAWS = True
