@@ -95,6 +95,16 @@ def read_employee_file(uploaded) -> pd.DataFrame:
         except UnicodeDecodeError:
             uploaded.seek(0)                      # rewind the file and try another encoding
             return pd.read_csv(uploaded, dtype=str, keep_default_na=False, encoding="latin-1")
+    if name.endswith(".xls"):
+        try:
+            return pd.read_excel(uploaded, dtype=str, engine="xlrd")
+        except ImportError:
+            raise ValueError("Reading .xls files needs the 'xlrd' package. Add 'xlrd' to "
+                             "requirements.txt and install it.")
+        except Exception:
+            raise ValueError("This .xls file could not be read. Some systems export HTML or text "
+                             "with an .xls name. Open it in Excel, use Save As -> Excel Workbook "
+                             "(.xlsx) or CSV, then upload that file.")
     return pd.read_excel(uploaded, dtype=str, engine="openpyxl")
 
 
@@ -164,7 +174,7 @@ with st.sidebar:
         st.warning("A draw is in progress. Importing will start a NEW draw.")
         replace_ok = st.checkbox("I understand — start a new draw")
 
-    uploaded = st.file_uploader("Upload employee file (.xlsx or .csv)", type=["xlsx", "csv"])
+    uploaded = st.file_uploader("Upload employee file (.xlsx, .xls or .csv)", type=["xlsx", "xls", "csv"])
     st.caption("Required columns: Employee_ID, Name, Designation, Department. "
                "Optional: Photo (file name, e.g. EMP0001.jpg).")
 
