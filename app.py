@@ -45,12 +45,34 @@ st.markdown("""
 
 
 # ---------------------------------------------------------------- helpers
+@st.cache_data(ttl=30)
+def photo_index() -> dict:
+    """Map every picture in the photos/ folder: name without extension -> real file name."""
+    index = {}
+    if PHOTOS_DIR.is_dir():
+        for f in PHOTOS_DIR.iterdir():
+            if f.suffix.lower() in (".jpg", ".jpeg", ".png"):
+                index[f.stem.strip().lower()] = f.name
+    return index
+
+
+def find_photo(employee_id: str, photo: str = "") -> str:
+    """Find the picture for an employee: first the Photo column (if filled in),
+    otherwise a file named after the employee number, e.g. photos/26070.jpg."""
+    index = photo_index()
+    if photo:
+        found = index.get(Path(photo).stem.strip().lower())
+        if found:
+            return found
+    return index.get(str(employee_id).strip().lower(), "")
+
+
 @lru_cache(maxsize=512)
-def photo_data_uri(photo: str):
-    """Return an embeddable image for a photo filename, or None if not found."""
-    if not photo:
+def photo_data_uri(filename: str):
+    """Return an embeddable image for a file in photos/, or None if not found."""
+    if not filename:
         return None
-    path = PHOTOS_DIR / Path(photo).name        # .name blocks '../' tricks
+    path = PHOTOS_DIR / Path(filename).name         # .name blocks '../' tricks
     if not path.is_file():
         return None
     mime = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
@@ -62,8 +84,8 @@ def initials(name: str) -> str:
     return "".join(p[0] for p in parts[:2]).upper() or "?"
 
 
-def avatar_html(name: str, photo: str) -> str:
-    uri = photo_data_uri(photo or "")
+def avatar_html(name: str, photo: str, employee_id: str = "") -> str:
+    uri = photo_data_uri(find_photo(employee_id, photo or ""))
     if uri:
         return f'<img class="avatar" src="{uri}">'
     hue = sum(ord(c) for c in name) * 7 % 360
@@ -75,7 +97,7 @@ def card_html(row, winner=False, big=False, label=None) -> str:
     classes = "emp-card" + (" winner" if winner else "") + (" big" if big else "")
     badge = f'<div class="badge">{html.escape(label)}</div>' if label else ""
     # NOTE: kept on one line - indented HTML can be mistaken for code by markdown
-    return (f'<div class="{classes}">{avatar_html(row["name"], row["photo_path"])}'
+    return (f'<div class="{classes}">{avatar_html(row["name"], row["photo_path"], row["employee_id"])}'
             f'<div class="emp-name">{html.escape(row["name"])}</div>'
             f'<div class="emp-meta">{html.escape(row["employee_id"])}</div>'
             f'<div class="emp-meta">{html.escape(row["designation"])}</div>'

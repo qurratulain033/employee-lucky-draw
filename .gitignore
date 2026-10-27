@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 data/*.db
+photos/*
+!photos/.gitkeep
+
+Draw_data_2024.xls
